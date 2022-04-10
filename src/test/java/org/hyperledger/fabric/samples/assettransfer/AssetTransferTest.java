@@ -302,4 +302,57 @@ public final class AssetTransferTest {
             assertThat(((ChaincodeException) thrown).getPayload()).isEqualTo("ASSET_NOT_FOUND".getBytes());
         }
     }
+
+    @Nested
+    class DuplicateAssetTransaction {
+
+        @Test
+        public void whenOldAssetExistsAndNewAssetDoesNotExist() {
+            AssetTransfer contract = new AssetTransfer();
+            Context ctx = mock(Context.class);
+            ChaincodeStub stub = mock(ChaincodeStub.class);
+            when(ctx.getStub()).thenReturn(stub);
+            when(stub.getStringState("asset1"))
+                        .thenReturn("{ \"assetID\": \"asset1\", \"color\": \"blue\", \"size\": 45, \"owner\": \"Arturo\", \"appraisedValue\": 60 }");
+
+            Asset asset = contract.DuplicateAsset(ctx, "asset1", "asset2", "Messi");
+
+            assertThat(asset).isEqualTo(new Asset("asset2", "blue", 45, "Messi", 60));
+        }
+
+        @Test
+        public void whenOldAssetDoesNotExist() {
+            AssetTransfer contract = new AssetTransfer();
+            Context ctx = mock(Context.class);
+            ChaincodeStub stub = mock(ChaincodeStub.class);
+            when(ctx.getStub()).thenReturn(stub);
+            when(stub.getStringState("asset1")).thenReturn("");
+
+            Throwable thrown = catchThrowable(() -> {
+                contract.DuplicateAsset(ctx, "asset1", "asset2", "Messi");
+            });
+
+            assertThat(thrown).isInstanceOf(ChaincodeException.class).hasNoCause()
+                    .hasMessage("Asset asset1 does not exist");
+            assertThat(((ChaincodeException) thrown).getPayload()).isEqualTo("ASSET_NOT_FOUND".getBytes());
+        }
+
+        @Test
+        public void whenNewAssetExists() {
+            AssetTransfer contract = new AssetTransfer();
+            Context ctx = mock(Context.class);
+            ChaincodeStub stub = mock(ChaincodeStub.class);
+            when(ctx.getStub()).thenReturn(stub);
+            when(stub.getStringState("asset1"))
+                    .thenReturn("{ \"assetID\": \"asset1\", \"color\": \"blue\", \"size\": 45, \"owner\": \"Arturo\", \"appraisedValue\": 60 }");
+
+            Throwable thrown = catchThrowable(() -> {
+                contract.DuplicateAsset(ctx, "asset1", "asset1", "Messi");
+            });
+
+            assertThat(thrown).isInstanceOf(ChaincodeException.class).hasNoCause()
+                    .hasMessage("Asset asset1 already exists");
+            assertThat(((ChaincodeException) thrown).getPayload()).isEqualTo("ASSET_ALREADY_EXISTS".getBytes());
+        }
+    }
 }
